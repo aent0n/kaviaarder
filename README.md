@@ -39,38 +39,34 @@ Kaviaarder is a local web app designed to mask repeating elements (headers, foot
 
 ## Quickstart
 
-### 1. Requirements
+### Requirements
 
 - Python 3.10+
 - A modern browser
 
-### 2. Install
+### Quick Launch (Zero Config)
+
+- **Windows**: Double-click `run.bat`
+- **Linux / macOS**: Run `./run.sh`
+
+*(The script automatically creates the virtual environment, installs dependencies on first run, and launches the application in your browser).*
+
+### Manual Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/aent0n/kaviaarder.git
 cd kaviaarder
 
-# Create a virtual environment
+# Create & activate virtual environment
 python -m venv .venv
+# On Windows: .\.venv\Scripts\Activate.ps1
+# On Linux/macOS: source .venv/bin/activate
 
-# Activate it
-# On Windows:
-.\.venv\Scripts\Activate.ps1
-# On Linux / macOS:
-source .venv/bin/activate
-
-# Install dependencies
+# Install dependencies and start
 pip install -r requirements.txt
-```
-
-### 3. Run
-
-```bash
 python app.py
 ```
-
-Your default browser will open automatically at `http://127.0.0.1:8000`.
 
 #### Optional flags
 
