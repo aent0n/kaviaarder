@@ -1,0 +1,2375 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaviaarder — Destructive PDF Redaction Tool</title>
+  <link rel="icon" type="image/png" id="faviconLink" href="/static/Kaviaarder_Logo_DarkMode.png" />
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-canvas: #09090b;
+      --bg-surface: #121215;
+      --bg-elevated: #18181c;
+      --bg-hover: #222228;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.14);
+      --success: #10b981;
+      --danger: #f43f5e;
+      --radius: 8px;
+      --radius-sm: 6px;
+      --dot-grid: rgba(255, 255, 255, 0.04);
+      --stage-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="light"] {
+      --bg-canvas: #f4f4f5;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f8fafc;
+      --bg-hover: #e4e4e7;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --text: #09090b;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --accent: #0284c7;
+      --accent-soft: rgba(2, 132, 199, 0.12);
+      --success: #059669;
+      --danger: #e11d48;
+      --radius: 8px;
+      --radius-sm: 6px;
+      --dot-grid: rgba(0, 0, 0, 0.05);
+      --stage-shadow: 0 18px 45px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-canvas);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      font-size: 13px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .icon {
+      width: 14px;
+      height: 14px;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    .icon-inline {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      vertical-align: -1px;
+      flex-shrink: 0;
+    }
+
+    /* --- TOPBAR --- */
+    .topbar {
+      height: 54px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 20;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .topbar-left,
+    .topbar-center,
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      cursor: default;
+    }
+
+    .logo-img {
+      height: 38px;
+      width: auto;
+      max-width: 140px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .divider-v {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    /* Segmented Controls */
+    .segmented {
+      display: inline-flex;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .seg-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.12s ease;
+    }
+
+    .seg-btn:hover:not(:disabled) {
+      color: var(--text);
+    }
+
+    .seg-btn.active {
+      background: var(--bg-hover);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .seg-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.12s ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--border-strong);
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg-canvas);
+      border-color: var(--text);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      opacity: 0.92;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: #ffffff;
+      border-color: var(--success);
+      font-weight: 600;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    .btn-icon {
+      padding: 5px 8px;
+    }
+
+    /* --- MAIN WORKSPACE --- */
+    .main-area {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      overflow: hidden;
+    }
+
+    /* --- CANVAS VIEWPORT --- */
+    .viewport {
+      position: relative;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background: radial-gradient(var(--dot-grid) 1px, transparent 1px);
+      background-size: 20px 20px;
+      transition: background 0.2s ease;
+    }
+
+    .canvas-stage {
+      position: relative;
+      display: none;
+      box-shadow: var(--stage-shadow);
+      background: #ffffff;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    #overlayCanvas {
+      position: absolute;
+      inset: 0;
+      cursor: crosshair;
+    }
+
+    .drop-empty {
+      width: 100%;
+      max-width: 440px;
+      padding: 44px 32px;
+      border: 1px dashed var(--border-strong);
+      border-radius: 12px;
+      background: var(--bg-surface);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .drop-empty:hover,
+    .drop-empty.dragover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .drop-logo-img {
+      height: 72px;
+      width: auto;
+      object-fit: contain;
+      margin-bottom: 4px;
+    }
+
+    .drop-empty h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .drop-empty p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* --- INSPECTOR SIDEBAR --- */
+    .inspector {
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .panel-block {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    /* Mask layers list */
+    .mask-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mask-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .mask-item:hover {
+      border-color: var(--border-strong);
+    }
+
+    .mask-item.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .mask-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .mask-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+    }
+
+    .mask-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mask-scope-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .mask-delete {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mask-delete:hover {
+      color: var(--danger);
+      background: rgba(244, 63, 94, 0.12);
+    }
+
+    /* Form inputs */
+    label.field-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 9px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.12s;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Color section */
+    .color-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      width: 32px;
+      height: 30px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      cursor: pointer;
+      padding: 2px;
+      flex-shrink: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: 3px;
+    }
+
+    .swatch-group {
+      display: flex;
+      gap: 5px;
+      margin-left: auto;
+    }
+
+    .swatch-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      border: 1px solid var(--border-strong);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .swatch-dot:hover {
+      transform: scale(1.1);
+    }
+
+    .outbound-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .subtle-check {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Footer export */
+    .inspector-footer {
+      margin-top: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg-surface);
+    }
+
+    .progress-box {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-track {
+      height: 6px;
+      background: var(--bg-canvas);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.18s ease;
+    }
+
+    .status-note {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-canvas);
+      border: 1px solid var(--border);
+      display: none;
+    }
+
+    /* Magnifier */
+    #magnifier {
+      position: fixed;
+      pointer-events: none;
+      display: none;
+      z-index: 100;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 5px 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-size: 11px;
+      font-family: monospace;
+      color: var(--text);
+      align-items: center;
+      gap: 7px;
+    }
+
+    .mag-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 0, 0, 0.25);
+    }
+
+    /* Shortcuts modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .modal-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .modal-close-btn:hover {
+      color: var(--text);
+    }
+
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    kbd {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-container">
+        <img id="appLogo" src="/static/Kaviaarder_Logo_DarkMode.png" alt="Kaviaarder" class="logo-img" />
+      </div>
+      <div class="divider-v"></div>
+      <button type="button" id="openPdfBtn" class="btn" title="Open PDF (Ctrl+O)">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span id="fileLabel" data-i18n="openPdf">Open PDF…</span>
+      </button>
+      <input type="file" id="fileInput" accept="application/pdf,.pdf" style="display: none;" />
+    </div>
+
+    <!-- Center Tools & Navigation -->
+    <div class="topbar-center">
+      <div class="segmented" title="Masking tool">
+        <button type="button" id="toolRectBtn" class="seg-btn active" disabled title="Rectangle tool (R)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          <span data-i18n="toolRect">Rectangle</span>
+        </button>
+        <button type="button" id="toolPolyBtn" class="seg-btn" disabled title="Polygon tool (P)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 18 21 6 21 2 8.5"/></svg>
+          <span data-i18n="toolPoly">Polygon</span>
+        </button>
+        <button type="button" id="toolPickBtn" class="seg-btn" disabled title="Color Eyedropper (I)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4l6 6-9 9H5v-6l9-9z"/><line x1="16" y1="2" x2="22" y2="8"/><circle cx="5" cy="19" r="1.5" fill="currentColor"/></svg>
+          <span data-i18n="toolPicker">Eyedropper</span>
+        </button>
+      </div>
+
+      <div class="divider-v"></div>
+
+      <!-- Quick Page Jump (Cover vs Body) -->
+      <div class="segmented">
+        <button type="button" id="quickCoverBtn" class="seg-btn active" disabled title="Jump to Page 1 / Cover (1)" data-i18n="quickCover">P.1 Cover</button>
+        <button type="button" id="quickBodyBtn" class="seg-btn" disabled title="Jump to Page 2 / Body (2)" data-i18n="quickBody">P.2 Body</button>
+      </div>
+
+      <div class="segmented">
+        <button type="button" id="prevPageBtn" class="seg-btn btn-icon" disabled title="Previous page (Left Arrow or [)">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span id="pageCounter" style="padding: 5px 8px; font-size: 12px; color: var(--text-secondary); min-width: 52px; text-align: center;">— / —</span>
+        <button type="button" id="nextPageBtn" class="seg-btn btn-icon" disabled title="Next page (Right Arrow or ])">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Zoom, Language, Theme & Actions -->
+    <div class="topbar-right">
+      <div class="segmented">
+        <button type="button" id="zoomOutBtn" class="seg-btn btn-icon" disabled title="Zoom out (-)">−</button>
+        <button type="button" id="zoomFitBtn" class="seg-btn active" disabled title="Fit page to screen (0)" data-i18n="zoomFit">Fit</button>
+        <button type="button" id="zoomInBtn" class="seg-btn btn-icon" disabled title="Zoom in (+)">+</button>
+      </div>
+
+      <button type="button" id="previewToggleBtn" class="btn" disabled title="Verify real PyMuPDF destruction on current page" data-i18n="realPreview">
+        Real preview
+      </button>
+
+      <!-- Language Switcher EN / FR -->
+      <div class="segmented" title="Language / Langue">
+        <button type="button" id="langEnBtn" class="seg-btn active" style="padding: 4px 7px; font-size: 11px; font-weight: 600;">EN</button>
+        <button type="button" id="langFrBtn" class="seg-btn" style="padding: 4px 7px; font-size: 11px; font-weight: 600;">FR</button>
+      </div>
+
+      <!-- Theme Switcher Dark / Light -->
+      <button type="button" id="themeToggleBtn" class="btn btn-icon" title="Toggle Dark / Light theme">
+        <svg id="themeIconSun" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="themeIconMoon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+
+      <!-- Keyboard Shortcuts Help -->
+      <button type="button" id="shortcutsBtn" class="btn btn-icon" title="Keyboard Shortcuts (?)">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="main-area">
+
+    <!-- CANVAS VIEWPORT -->
+    <main class="viewport" id="viewport">
+      <div id="dropEmpty" class="drop-empty">
+        <img id="dropEmptyLogo" src="/static/Kaviaarder_Logo_DarkMode.png" alt="Kaviaarder" class="drop-logo-img" />
+        <h2 data-i18n="emptyTitle">Drop a PDF file here</h2>
+        <p data-i18n="emptyDesc">or click to browse a multi-page document</p>
+      </div>
+
+      <div id="canvasStage" class="canvas-stage">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+      </div>
+
+      <div id="polygonHint" class="canvas-hint">
+        <span id="polygonHintText" data-i18n="polyHint">Click on the page to place polygon vertices.</span>
+        <button type="button" id="closePolyBtn" class="btn" style="padding: 3px 8px; font-size: 11px;" data-i18n="polyCloseBtn">Close (Enter)</button>
+      </div>
+    </main>
+
+    <!-- INSPECTOR -->
+    <aside class="inspector">
+
+      <!-- 1. MASK LAYERS -->
+      <div class="panel-block">
+        <div class="block-header">
+          <span data-i18n="masksHeader">Active Masks</span>
+          <button type="button" id="addMaskBtn" class="btn" style="padding: 3px 8px; font-size: 11px;" disabled data-i18n="addMaskBtn">+ Add</button>
+        </div>
+        <div id="maskList" class="mask-list">
+          <div style="font-size: 12px; color: var(--text-muted);" data-i18n="noDocLoaded">No document loaded</div>
+        </div>
+      </div>
+
+      <!-- 2. TARGET PAGES GRANULARITY -->
+      <div class="panel-block" id="scopeBlock" style="opacity: 0.4; pointer-events: none;">
+        <div class="block-header">
+          <span data-i18n="targetPagesHeader">Target Pages for this mask</span>
+        </div>
+
+        <div>
+          <select id="scopeSelect">
+            <option value="no_cover" data-i18n="scopeNoCover">Pages 2 → End (Skip cover)</option>
+            <option value="all" data-i18n="scopeAll">All pages (1 → End)</option>
+            <option value="cover" data-i18n="scopeCover">Page 1 only (Cover)</option>
+            <option value="odd" data-i18n="scopeOdd">Odd pages (1, 3, 5…)</option>
+            <option value="even" data-i18n="scopeEven">Even pages (2, 4, 6…)</option>
+            <option value="custom" data-i18n="scopeCustom">Custom page range…</option>
+          </select>
+        </div>
+
+        <div id="customRangeWrap" style="display: none;">
+          <label class="field-label" for="customRangeInput" data-i18n="customRangeLabel">Range (e.g. 2-60 or 1, 3-12)</label>
+          <input type="text" id="customRangeInput" placeholder="2-60" />
+        </div>
+      </div>
+
+      <!-- 3. REDACTION COLOR & OUTBOUND PIXEL GRAB -->
+      <div class="panel-block" id="colorBlock" style="opacity: 0.4; pointer-events: none;">
+        <div class="block-header">
+          <span data-i18n="colorHeader">Redaction Color</span>
+        </div>
+
+        <div class="color-bar">
+          <input type="color" id="colorPicker" value="#ffffff" />
+          <input type="text" id="colorHex" value="#FFFFFF" maxlength="7" style="width: 82px; font-family: monospace;" />
+          <div class="swatch-group">
+            <div class="swatch-dot" data-color="#FFFFFF" style="background: #FFFFFF;" title="White"></div>
+            <div class="swatch-dot" data-color="#000000" style="background: #000000;" title="Black"></div>
+            <div class="swatch-dot" data-color="#F8FAFC" style="background: #F8FAFC;" title="Light gray"></div>
+            <div class="swatch-dot" data-color="#FAF6EE" style="background: #FAF6EE;" title="Cream paper"></div>
+          </div>
+        </div>
+
+        <div class="outbound-row">
+          <button type="button" id="grabOutboundBtn" class="btn" style="flex: 1;" title="Auto-detect color from adjacent background pixels outside the selection">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+            <span data-i18n="grabOutbound">Adjacent pixel</span>
+          </button>
+          <select id="outboundSide" style="width: 115px;" title="Sampling boundary edge">
+            <option value="bottom" selected data-i18n="sideBottom">Below area</option>
+            <option value="top" data-i18n="sideTop">Above area</option>
+            <option value="left" data-i18n="sideLeft">Left edge</option>
+            <option value="right" data-i18n="sideRight">Right edge</option>
+            <option value="all" data-i18n="sideAll">Perimeter</option>
+          </select>
+        </div>
+
+        <label class="subtle-check">
+          <input type="checkbox" id="autoGrabCheck" checked />
+          <span data-i18n="autoGrabLabel">Auto-adjust color when moving area</span>
+        </label>
+      </div>
+
+      <!-- 4. GEOMETRY (RECTANGLE / POLYGON) -->
+      <div class="panel-block" id="geomBlock" style="opacity: 0.4; pointer-events: none;">
+        <div class="block-header">
+          <span id="geomTitle" data-i18n="geomHeader">Geometry</span>
+          <div class="segmented" id="unitSwitch" style="padding: 1px;">
+            <button type="button" id="unitPtBtn" class="seg-btn active" style="padding: 2px 6px; font-size: 10px;">pt</button>
+            <button type="button" id="unitPxBtn" class="seg-btn" style="padding: 2px 6px; font-size: 10px;">px</button>
+          </div>
+        </div>
+
+        <!-- Rectangle Fields -->
+        <div id="rectFields" class="grid-4">
+          <div>
+            <label class="field-label">X <span class="u-lbl">pt</span></label>
+            <input type="number" id="inputX" step="0.5" value="0" />
+          </div>
+          <div>
+            <label class="field-label">Y <span class="u-lbl">pt</span></label>
+            <input type="number" id="inputY" step="0.5" value="0" />
+          </div>
+          <div>
+            <label class="field-label"><span data-i18n="widthLabel">Width</span> <span class="u-lbl">pt</span></label>
+            <input type="number" id="inputW" step="0.5" value="0" />
+          </div>
+          <div>
+            <label class="field-label"><span data-i18n="heightLabel">Height</span> <span class="u-lbl">pt</span></label>
+            <input type="number" id="inputH" step="0.5" value="0" />
+          </div>
+        </div>
+
+        <!-- Polygon Fields -->
+        <div id="polyFields" style="display: none; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 12px;">
+            <span data-i18n="polyVerticesCount">Defined vertices:</span>
+            <strong id="polyVertexCount" style="color: var(--text);">0</strong>
+          </div>
+          <div class="grid-2">
+            <button type="button" id="resetPolyBtn" class="btn" data-i18n="polyRedrawBtn">Redraw</button>
+            <button type="button" id="finishPolyBtn" class="btn" data-i18n="polyFinishBtn">Close shape</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. EXPORT & SSE BATCH PROGRESS -->
+      <div class="inspector-footer">
+        <div id="statusNote" class="status-note"></div>
+
+        <div id="progressBox" class="progress-box">
+          <div class="progress-track">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+            <span id="progressLabel" data-i18n="progressLabel">Processing…</span>
+            <span id="progressPct">0%</span>
+          </div>
+        </div>
+
+        <button type="button" id="exportBtn" class="btn btn-primary" style="padding: 10px;" disabled data-i18n="exportBtn">
+          Apply Redaction
+        </button>
+
+        <a id="downloadLink" class="btn btn-success" style="padding: 10px; display: none;" href="#" download data-i18n="downloadBtn">
+          Download Redacted PDF
+        </a>
+
+        <div style="text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+          Made by <a href="https://github.com/aent0n" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none;">aent0n</a>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- Eyedropper Magnifier -->
+  <div id="magnifier">
+    <div id="magSwatch" class="mag-swatch"></div>
+    <span id="magHex">#FFFFFF</span>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcutsModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 data-i18n="shortcutsTitle">Keyboard Shortcuts</h3>
+        <button type="button" id="closeShortcutsModal" class="modal-close-btn">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="shortcut-row"><span>Rectangle tool</span><kbd>R</kbd></div>
+        <div class="shortcut-row"><span>Polygon tool</span><kbd>P</kbd></div>
+        <div class="shortcut-row"><span>Color eyedropper</span><kbd>I</kbd></div>
+        <div class="shortcut-row"><span>Close ongoing polygon</span><kbd>Enter</kbd></div>
+        <div class="shortcut-row"><span>Delete active mask</span><kbd>Delete</kbd> / <kbd>Backspace</kbd></div>
+        <div class="shortcut-row"><span>Jump to Cover (P.1) / Body (P.2)</span><kbd>1</kbd> / <kbd>2</kbd></div>
+        <div class="shortcut-row"><span>Previous / Next page</span><kbd>[</kbd> / <kbd>]</kbd> or <kbd>←</kbd> / <kbd>→</kbd></div>
+        <div class="shortcut-row"><span>Fit to screen / Zoom</span><kbd>0</kbd> / <kbd>+</kbd> / <kbd>-</kbd></div>
+        <div class="shortcut-row"><span>Cancel / Close dialog</span><kbd>Esc</kbd></div>
+      </div>
+      <div style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between;">
+        <span>Kaviaarder</span>
+        <span>Made by <a href="https://github.com/aent0n" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none;">aent0n</a></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- DICTIONARY I18N (EN / FR) ---
+    const I18N = {
+      en: {
+        openPdf: "Open PDF…",
+        loadingPdf: "Loading…",
+        toolRect: "Rectangle",
+        toolPoly: "Polygon",
+        toolPicker: "Eyedropper",
+        quickCover: "P.1 Cover",
+        quickBody: "P.2 Body",
+        zoomFit: "Fit",
+        realPreview: "Real preview",
+        emptyTitle: "Drop a PDF file here",
+        emptyDesc: "or click to browse a multi-page document",
+        polyHint: "Click on the page to place polygon vertices.",
+        polyHintDone: "vertices — Click on the 1st vertex or click Close.",
+        polyCloseBtn: "Close (Enter)",
+        masksHeader: "Active Masks",
+        addMaskBtn: "+ Add",
+        noDocLoaded: "No document loaded",
+        maskLabel: "Mask",
+        targetPagesHeader: "Target Pages for this mask",
+        scopeNoCover: "Pages 2 → End (Skip cover)",
+        scopeAll: "All pages (1 → End)",
+        scopeCover: "Page 1 only (Cover)",
+        scopeOdd: "Odd pages (1, 3, 5…)",
+        scopeEven: "Even pages (2, 4, 6…)",
+        scopeCustom: "Custom page range…",
+        customRangeLabel: "Range (e.g. 2-60 or 1, 3-12)",
+        colorHeader: "Redaction Color",
+        grabOutbound: "Adjacent pixel",
+        sideBottom: "Below area",
+        sideTop: "Above area",
+        sideLeft: "Left edge",
+        sideRight: "Right edge",
+        sideAll: "Perimeter",
+        autoGrabLabel: "Auto-adjust color when moving area",
+        geomHeader: "Geometry",
+        widthLabel: "Width",
+        heightLabel: "Height",
+        polyVerticesCount: "Defined vertices:",
+        polyRedrawBtn: "Redraw",
+        polyFinishBtn: "Close shape",
+        progressLabel: "Processing…",
+        exportBtn: "Apply Redaction",
+        downloadBtn: "Download Redacted PDF",
+        shortcutsTitle: "Keyboard Shortcuts",
+        previewSuccess: "Real PyMuPDF preview (Page {page}): <strong>{count} character(s)</strong> permanently destroyed.",
+        batchSuccess: "<strong>{redacted} / {total} page(s) redacted</strong><br>{orig} → {out}",
+        errorImport: "Error loading PDF file",
+        errorPreview: "Error generating PyMuPDF preview",
+        errorBatch: "Batch redaction failed",
+      },
+      fr: {
+        openPdf: "Ouvrir un PDF…",
+        loadingPdf: "Chargement…",
+        toolRect: "Rectangle",
+        toolPoly: "Polygone",
+        toolPicker: "Pipette",
+        quickCover: "P.1 Couverture",
+        quickBody: "P.2 Corps",
+        zoomFit: "Ajuster",
+        realPreview: "Aperçu réel",
+        emptyTitle: "Déposez un fichier PDF",
+        emptyDesc: "ou cliquez pour sélectionner un document multipages",
+        polyHint: "Cliquez sur la page pour placer les sommets du polygone.",
+        polyHintDone: "sommets — Cliquez sur le 1er point ou sur Fermer.",
+        polyCloseBtn: "Fermer (Entrée)",
+        masksHeader: "Masques actifs",
+        addMaskBtn: "+ Ajouter",
+        noDocLoaded: "Aucun document chargé",
+        maskLabel: "Masque",
+        targetPagesHeader: "Pages ciblées par ce masque",
+        scopeNoCover: "Pages 2 → Fin (Ignorer la couverture)",
+        scopeAll: "Toutes les pages (1 → Fin)",
+        scopeCover: "Page 1 uniquement (Couverture)",
+        scopeOdd: "Pages impaires (1, 3, 5…)",
+        scopeEven: "Pages paires (2, 4, 6…)",
+        scopeCustom: "Plage personnalisée…",
+        customRangeLabel: "Plage (ex: 2-60 ou 1, 3-12)",
+        colorHeader: "Couleur de caviardage",
+        grabOutbound: "Pixel adjacent",
+        sideBottom: "Sous la zone",
+        sideTop: "Au-dessus",
+        sideLeft: "À gauche",
+        sideRight: "À droite",
+        sideAll: "Contour",
+        autoGrabLabel: "Adapter la couleur automatiquement au déplacement",
+        geomHeader: "Géométrie",
+        widthLabel: "Largeur",
+        heightLabel: "Hauteur",
+        polyVerticesCount: "Sommets définis :",
+        polyRedrawBtn: "Redessiner",
+        polyFinishBtn: "Fermer forme",
+        progressLabel: "Traitement…",
+        exportBtn: "Appliquer le caviardage",
+        downloadBtn: "Télécharger le PDF nettoyé",
+        shortcutsTitle: "Raccourcis clavier",
+        previewSuccess: "Aperçu réel PyMuPDF (Page {page}) : <strong>{count} caractère(s)</strong> détruit(s) sous le masque.",
+        batchSuccess: "<strong>{redacted} / {total} page(s) traitée(s)</strong><br>{orig} → {out}",
+        errorImport: "Erreur de chargement du PDF",
+        errorPreview: "Erreur lors de l'aperçu PyMuPDF",
+        errorBatch: "Échec du traitement par lots",
+      }
+    };
+
+    let currentLang = localStorage.getItem("kaviaarder-lang") || "en";
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang;
+      localStorage.setItem("kaviaarder-lang", lang);
+
+      document.getElementById("langEnBtn").classList.toggle("active", lang === "en");
+      document.getElementById("langFrBtn").classList.toggle("active", lang === "fr");
+
+      const t = I18N[lang];
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key]) el.textContent = t[key];
+      });
+
+      renderMaskList();
+      syncInspectorFromActiveMask();
+    }
+
+    document.getElementById("langEnBtn").addEventListener("click", () => setLanguage("en"));
+    document.getElementById("langFrBtn").addEventListener("click", () => setLanguage("fr"));
+
+    // --- THEME & LOGO MANAGEMENT ---
+    function setTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("kaviaarder-theme", theme);
+      const isDark = theme === "dark";
+      const logoUrl = isDark ? "/static/Kaviaarder_Logo_DarkMode.png" : "/static/Kaviaarder_Logo_LightMode.png";
+
+      const appLogo = document.getElementById("appLogo");
+      if (appLogo) appLogo.src = logoUrl;
+      const dropEmptyLogo = document.getElementById("dropEmptyLogo");
+      if (dropEmptyLogo) dropEmptyLogo.src = logoUrl;
+      const faviconLink = document.getElementById("faviconLink");
+      if (faviconLink) faviconLink.href = logoUrl;
+
+      const sun = document.getElementById("themeIconSun");
+      const moon = document.getElementById("themeIconMoon");
+      if (sun && moon) {
+        sun.style.display = isDark ? "block" : "none";
+        moon.style.display = isDark ? "none" : "block";
+      }
+    }
+
+    const savedTheme = localStorage.getItem("kaviaarder-theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    setTheme(savedTheme);
+
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    themeToggleBtn.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      setTheme(current === "dark" ? "light" : "dark");
+    });
+
+    // --- SHORTCUTS MODAL ---
+    const shortcutsModal = document.getElementById("shortcutsModal");
+    const shortcutsBtn = document.getElementById("shortcutsBtn");
+    const closeShortcutsModal = document.getElementById("closeShortcutsModal");
+
+    shortcutsBtn.addEventListener("click", () => {
+      shortcutsModal.style.display = "flex";
+    });
+    closeShortcutsModal.addEventListener("click", () => {
+      shortcutsModal.style.display = "none";
+    });
+    shortcutsModal.addEventListener("click", (e) => {
+      if (e.target === shortcutsModal) shortcutsModal.style.display = "none";
+    });
+
+    // --- APPLICATION STATE ---
+    const state = {
+      sessionId: null,
+      filename: "",
+      pageCount: 0,
+      currentPage: 1,
+      renderScale: 2.0,
+      zoomMode: "fit",
+      displayZoom: 1.0,
+      pageWidthPt: 595,
+      pageHeightPt: 842,
+      unit: "pt",
+      tool: "rect",
+      previousTool: "rect",
+      serverPreviewActive: false,
+      basePageImage: null,
+
+      masks: [],
+      activeMaskId: null,
+
+      interaction: null,
+      hoverCursorPosPx: null,
+    };
+
+    const HANDLE_RADIUS = 5;
+
+    // --- DOM REFERENCES ---
+    const openPdfBtn = document.getElementById("openPdfBtn");
+    const fileLabel = document.getElementById("fileLabel");
+    const fileInput = document.getElementById("fileInput");
+    const dropEmpty = document.getElementById("dropEmpty");
+    const viewport = document.getElementById("viewport");
+    const canvasStage = document.getElementById("canvasStage");
+    const pdfCanvas = document.getElementById("pdfCanvas");
+    const pdfCtx = pdfCanvas.getContext("2d", { willReadFrequently: true });
+    const overlayCanvas = document.getElementById("overlayCanvas");
+    const overlayCtx = overlayCanvas.getContext("2d");
+
+    const toolRectBtn = document.getElementById("toolRectBtn");
+    const toolPolyBtn = document.getElementById("toolPolyBtn");
+    const toolPickBtn = document.getElementById("toolPickBtn");
+
+    const quickCoverBtn = document.getElementById("quickCoverBtn");
+    const quickBodyBtn = document.getElementById("quickBodyBtn");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const pageCounter = document.getElementById("pageCounter");
+
+    const zoomOutBtn = document.getElementById("zoomOutBtn");
+    const zoomFitBtn = document.getElementById("zoomFitBtn");
+    const zoomInBtn = document.getElementById("zoomInBtn");
+    const previewToggleBtn = document.getElementById("previewToggleBtn");
+
+    const polygonHint = document.getElementById("polygonHint");
+    const polygonHintText = document.getElementById("polygonHintText");
+    const closePolyBtn = document.getElementById("closePolyBtn");
+
+    const addMaskBtn = document.getElementById("addMaskBtn");
+    const maskList = document.getElementById("maskList");
+    const scopeBlock = document.getElementById("scopeBlock");
+    const colorBlock = document.getElementById("colorBlock");
+    const geomBlock = document.getElementById("geomBlock");
+
+    const scopeSelect = document.getElementById("scopeSelect");
+    const customRangeWrap = document.getElementById("customRangeWrap");
+    const customRangeInput = document.getElementById("customRangeInput");
+
+    const colorPicker = document.getElementById("colorPicker");
+    const colorHex = document.getElementById("colorHex");
+    const grabOutboundBtn = document.getElementById("grabOutboundBtn");
+    const outboundSide = document.getElementById("outboundSide");
+    const autoGrabCheck = document.getElementById("autoGrabCheck");
+
+    const unitPtBtn = document.getElementById("unitPtBtn");
+    const unitPxBtn = document.getElementById("unitPxBtn");
+    const rectFields = document.getElementById("rectFields");
+    const polyFields = document.getElementById("polyFields");
+    const polyVertexCount = document.getElementById("polyVertexCount");
+    const resetPolyBtn = document.getElementById("resetPolyBtn");
+    const finishPolyBtn = document.getElementById("finishPolyBtn");
+
+    const inputX = document.getElementById("inputX");
+    const inputY = document.getElementById("inputY");
+    const inputW = document.getElementById("inputW");
+    const inputH = document.getElementById("inputH");
+
+    const statusNote = document.getElementById("statusNote");
+    const progressBox = document.getElementById("progressBox");
+    const progressFill = document.getElementById("progressFill");
+    const progressLabel = document.getElementById("progressLabel");
+    const progressPct = document.getElementById("progressPct");
+    const exportBtn = document.getElementById("exportBtn");
+    const downloadLink = document.getElementById("downloadLink");
+
+    const magnifier = document.getElementById("magnifier");
+    const magSwatch = document.getElementById("magSwatch");
+    const magHex = document.getElementById("magHex");
+
+    // --- HELPERS ---
+    const ptToPx = (pt) => pt * state.renderScale;
+    const pxToPt = (px) => px / state.renderScale;
+
+    function uid() {
+      return "m_" + Math.random().toString(36).slice(2, 9);
+    }
+
+    function getActiveMask() {
+      return state.masks.find((m) => m.id === state.activeMaskId) || null;
+    }
+
+    function maskAppliesToPage(mask, pageNum) {
+      const maxP = state.pageCount;
+      if (mask.scope === "all") return true;
+      if (mask.scope === "no_cover") return pageNum >= 2;
+      if (mask.scope === "cover") return pageNum === 1;
+      if (mask.scope === "odd") return pageNum % 2 === 1;
+      if (mask.scope === "even") return pageNum % 2 === 0;
+      if (mask.scope === "custom") {
+        const parts = (mask.custom_range || "").split(",");
+        for (const raw of parts) {
+          const p = raw.trim();
+          if (!p) continue;
+          if (p.includes("-")) {
+            const [a, bRaw] = p.split("-");
+            const start = parseInt(a, 10);
+            const end = bRaw.trim() === "" ? maxP : parseInt(bRaw, 10);
+            if (!isNaN(start) && !isNaN(end) && pageNum >= start && pageNum <= end) return true;
+          } else {
+            if (parseInt(p, 10) === pageNum) return true;
+          }
+        }
+        return false;
+      }
+      return true;
+    }
+
+    function scopeShortLabel(mask) {
+      const t = I18N[currentLang];
+      switch (mask.scope) {
+        case "all":
+          return `Pages 1–${state.pageCount}`;
+        case "no_cover":
+          return state.pageCount > 1 ? `Pages 2–${state.pageCount}` : "P.2+";
+        case "cover":
+          return currentLang === "en" ? "Cover (P.1)" : "Couverture (P.1)";
+        case "odd":
+          return currentLang === "en" ? "Odd pages" : "Pages impaires";
+        case "even":
+          return currentLang === "en" ? "Even pages" : "Pages paires";
+        case "custom":
+          return mask.custom_range ? `Pages ${mask.custom_range}` : (currentLang === "en" ? "Custom" : "Perso");
+        default:
+          return "All";
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      const kb = bytes / 1024;
+      if (kb < 1024) return kb.toFixed(1) + " KB";
+      return (kb / 1024).toFixed(2) + " MB";
+    }
+
+    // --- ZOOM LOGIC ---
+    function applyCanvasZoom() {
+      if (!pdfCanvas.width || !pdfCanvas.height) return;
+
+      const pad = 64;
+      const availW = Math.max(200, viewport.clientWidth - pad);
+      const availH = Math.max(200, viewport.clientHeight - pad);
+
+      if (state.zoomMode === "fit") {
+        const ratioW = availW / pdfCanvas.width;
+        const ratioH = availH / pdfCanvas.height;
+        state.displayZoom = Math.min(ratioW, ratioH, 1.0);
+        zoomFitBtn.classList.add("active");
+        zoomFitBtn.textContent = I18N[currentLang].zoomFit;
+      } else {
+        zoomFitBtn.classList.remove("active");
+        zoomFitBtn.textContent = `${Math.round(state.displayZoom * 100)}%`;
+      }
+
+      const cssW = Math.round(pdfCanvas.width * state.displayZoom);
+      const cssH = Math.round(pdfCanvas.height * state.displayZoom);
+
+      canvasStage.style.width = `${cssW}px`;
+      canvasStage.style.height = `${cssH}px`;
+      pdfCanvas.style.width = `${cssW}px`;
+      pdfCanvas.style.height = `${cssH}px`;
+      overlayCanvas.style.width = `${cssW}px`;
+      overlayCanvas.style.height = `${cssH}px`;
+    }
+
+    window.addEventListener("resize", () => {
+      if (state.sessionId && state.zoomMode === "fit") {
+        applyCanvasZoom();
+      }
+    });
+
+    zoomFitBtn.addEventListener("click", () => {
+      state.zoomMode = "fit";
+      applyCanvasZoom();
+    });
+
+    zoomInBtn.addEventListener("click", () => {
+      state.zoomMode = "manual";
+      state.displayZoom = Math.min(2.5, state.displayZoom * 1.2);
+      applyCanvasZoom();
+    });
+
+    zoomOutBtn.addEventListener("click", () => {
+      state.zoomMode = "manual";
+      state.displayZoom = Math.max(0.2, state.displayZoom / 1.2);
+      applyCanvasZoom();
+    });
+
+    // --- UPLOAD PDF ---
+    openPdfBtn.addEventListener("click", () => fileInput.click());
+    dropEmpty.addEventListener("click", () => fileInput.click());
+
+    window.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropEmpty.classList.add("dragover");
+    });
+    window.addEventListener("dragleave", () => dropEmpty.classList.remove("dragover"));
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropEmpty.classList.remove("dragover");
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        uploadPdf(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        uploadPdf(fileInput.files[0]);
+      }
+    });
+
+    async function uploadPdf(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      fileLabel.textContent = I18N[currentLang].loadingPdf;
+      downloadLink.style.display = "none";
+      statusNote.style.display = "none";
+
+      try {
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || I18N[currentLang].errorImport);
+        }
+        const data = await res.json();
+
+        state.sessionId = data.session_id;
+        state.filename = data.filename;
+        state.pageCount = data.page_count;
+        state.currentPage = 1;
+        state.pageWidthPt = data.width_pt;
+        state.pageHeightPt = data.height_pt;
+        state.zoomMode = "fit";
+
+        fileLabel.textContent = `${data.filename} (${data.page_count} p.)`;
+
+        [
+          toolRectBtn,
+          toolPolyBtn,
+          toolPickBtn,
+          quickCoverBtn,
+          zoomOutBtn,
+          zoomFitBtn,
+          zoomInBtn,
+          previewToggleBtn,
+          addMaskBtn,
+          exportBtn,
+        ].forEach((b) => (b.disabled = false));
+
+        quickBodyBtn.disabled = data.page_count < 2;
+        scopeBlock.style.opacity = "1";
+        scopeBlock.style.pointerEvents = "auto";
+        colorBlock.style.opacity = "1";
+        colorBlock.style.pointerEvents = "auto";
+        geomBlock.style.opacity = "1";
+        geomBlock.style.pointerEvents = "auto";
+
+        state.masks = [];
+        createDefaultMask("all");
+
+        await loadPage(1);
+        grabClosestOutboundPixel();
+      } catch (err) {
+        fileLabel.textContent = I18N[currentLang].openPdf;
+        alert(err.message);
+      }
+    }
+
+    function createDefaultMask(defaultScope = "all") {
+      const m = {
+        id: uid(),
+        shape: state.tool === "polygon" ? "polygon" : "rect",
+        x_pt: Math.round(state.pageWidthPt * 0.05),
+        y_pt: Math.round(state.pageHeightPt * 0.025),
+        w_pt: Math.round(state.pageWidthPt * 0.9),
+        h_pt: Math.round(state.pageHeightPt * 0.07),
+        points_pt: [],
+        closed: false,
+        fill_color: "#FFFFFF",
+        scope: defaultScope,
+        custom_range: state.pageCount > 1 ? `2-${state.pageCount}` : "1",
+        ref_width_pt: state.pageWidthPt,
+        ref_height_pt: state.pageHeightPt,
+      };
+      state.masks.push(m);
+      state.activeMaskId = m.id;
+      syncInspectorFromActiveMask();
+      renderMaskList();
+      return m;
+    }
+
+    // --- PAGE NAVIGATION ---
+    async function loadPage(pageNum) {
+      if (!state.sessionId) return;
+      state.currentPage = pageNum;
+      state.serverPreviewActive = false;
+      previewToggleBtn.classList.remove("active");
+
+      pageCounter.textContent = `${pageNum} / ${state.pageCount}`;
+      prevPageBtn.disabled = pageNum <= 1;
+      nextPageBtn.disabled = pageNum >= state.pageCount;
+      quickCoverBtn.classList.toggle("active", pageNum === 1);
+      quickBodyBtn.classList.toggle("active", pageNum >= 2);
+
+      const res = await fetch(`/api/page/${state.sessionId}/${pageNum}?scale=${state.renderScale}`);
+      if (!res.ok) return;
+
+      const wPt = parseFloat(res.headers.get("X-Page-Width-Pt"));
+      const hPt = parseFloat(res.headers.get("X-Page-Height-Pt"));
+      if (!isNaN(wPt) && !isNaN(hPt)) {
+        state.pageWidthPt = wPt;
+        state.pageHeightPt = hPt;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      await new Promise((r, j) => {
+        img.onload = r;
+        img.onerror = j;
+        img.src = url;
+      });
+
+      pdfCanvas.width = img.width;
+      pdfCanvas.height = img.height;
+      overlayCanvas.width = img.width;
+      overlayCanvas.height = img.height;
+      pdfCtx.drawImage(img, 0, 0);
+      state.basePageImage = img;
+
+      dropEmpty.style.display = "none";
+      canvasStage.style.display = "block";
+
+      applyCanvasZoom();
+      drawOverlay();
+    }
+
+    prevPageBtn.addEventListener("click", () => {
+      if (state.currentPage > 1) loadPage(state.currentPage - 1);
+    });
+    nextPageBtn.addEventListener("click", () => {
+      if (state.currentPage < state.pageCount) loadPage(state.currentPage + 1);
+    });
+    quickCoverBtn.addEventListener("click", () => {
+      if (state.currentPage !== 1) loadPage(1);
+    });
+    quickBodyBtn.addEventListener("click", () => {
+      if (state.pageCount >= 2 && state.currentPage === 1) loadPage(2);
+    });
+
+    // --- MASK LAYERS ---
+    addMaskBtn.addEventListener("click", () => {
+      const defaultScope = state.currentPage === 1 ? "cover" : "no_cover";
+      const m = createDefaultMask(defaultScope);
+      if (state.tool === "polygon") {
+        m.shape = "polygon";
+        m.points_pt = [];
+        m.closed = false;
+      }
+      syncInspectorFromActiveMask();
+      renderMaskList();
+      drawOverlay();
+    });
+
+    function renderMaskList() {
+      maskList.innerHTML = "";
+      if (!state.sessionId || state.masks.length === 0) {
+        maskList.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">${I18N[currentLang].noDocLoaded}</div>`;
+        return;
+      }
+
+      state.masks.forEach((m, index) => {
+        const item = document.createElement("div");
+        item.className = "mask-item" + (m.id === state.activeMaskId ? " active" : "");
+
+        const shapeSvg = m.shape === "polygon"
+          ? `<svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 18 21 6 21 2 8.5"/></svg>`
+          : `<svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+
+        const appliesHere = maskAppliesToPage(m, state.currentPage);
+        const maskWord = I18N[currentLang].maskLabel;
+
+        item.innerHTML = `
+          <div class="mask-item-left">
+            <span class="mask-color-dot" style="background: ${m.fill_color}"></span>
+            <span class="mask-title">${shapeSvg} ${maskWord} ${index + 1}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="mask-scope-tag" style="${appliesHere ? "color: var(--accent); border-color: rgba(56,189,248,0.35);" : ""}">
+              ${scopeShortLabel(m)}
+            </span>
+            ${state.masks.length > 1 ? `<button type="button" class="mask-delete" data-del="${m.id}" title="Delete mask"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ""}
+          </div>
+        `;
+
+        item.addEventListener("click", (e) => {
+          const delTarget = e.target.closest("[data-del]");
+          if (delTarget) {
+            const delId = delTarget.getAttribute("data-del");
+            state.masks = state.masks.filter((x) => x.id !== delId);
+            if (state.activeMaskId === delId) {
+              state.activeMaskId = state.masks[0]?.id || null;
+            }
+            syncInspectorFromActiveMask();
+            renderMaskList();
+            drawOverlay();
+            return;
+          }
+          state.activeMaskId = m.id;
+          setTool(m.shape);
+          syncInspectorFromActiveMask();
+          renderMaskList();
+
+          if (!maskAppliesToPage(m, state.currentPage)) {
+            if (m.scope === "cover") loadPage(1);
+            else if (m.scope === "no_cover" && state.pageCount >= 2) loadPage(2);
+          } else {
+            drawOverlay();
+          }
+        });
+
+        maskList.appendChild(item);
+      });
+    }
+
+    function syncInspectorFromActiveMask() {
+      const m = getActiveMask();
+      if (!m) return;
+
+      scopeSelect.value = m.scope;
+      customRangeWrap.style.display = m.scope === "custom" ? "block" : "none";
+      customRangeInput.value = m.custom_range || "";
+
+      colorPicker.value = m.fill_color.toLowerCase();
+      colorHex.value = m.fill_color.toUpperCase();
+
+      if (m.shape === "rect") {
+        rectFields.style.display = "grid";
+        polyFields.style.display = "none";
+        document.getElementById("unitSwitch").style.display = "inline-flex";
+        if (state.unit === "pt") {
+          inputX.value = m.x_pt.toFixed(1);
+          inputY.value = m.y_pt.toFixed(1);
+          inputW.value = m.w_pt.toFixed(1);
+          inputH.value = m.h_pt.toFixed(1);
+        } else {
+          inputX.value = Math.round(ptToPx(m.x_pt));
+          inputY.value = Math.round(ptToPx(m.y_pt));
+          inputW.value = Math.round(ptToPx(m.w_pt));
+          inputH.value = Math.round(ptToPx(m.h_pt));
+        }
+      } else {
+        rectFields.style.display = "none";
+        polyFields.style.display = "flex";
+        document.getElementById("unitSwitch").style.display = "none";
+        const statusText = m.closed ? (currentLang === "en" ? " (closed)" : " (fermé)") : (currentLang === "en" ? " (in progress)" : " (en cours)");
+        polyVertexCount.textContent = `${m.points_pt.length}${statusText}`;
+      }
+
+      updatePolygonHint();
+    }
+
+    scopeSelect.addEventListener("change", () => {
+      const m = getActiveMask();
+      if (!m) return;
+      m.scope = scopeSelect.value;
+      customRangeWrap.style.display = m.scope === "custom" ? "block" : "none";
+      renderMaskList();
+
+      if (m.scope === "no_cover" && state.currentPage === 1 && state.pageCount >= 2) {
+        loadPage(2);
+      } else if (m.scope === "cover" && state.currentPage !== 1) {
+        loadPage(1);
+      } else {
+        drawOverlay();
+      }
+    });
+
+    customRangeInput.addEventListener("input", () => {
+      const m = getActiveMask();
+      if (!m) return;
+      m.custom_range = customRangeInput.value;
+      renderMaskList();
+      drawOverlay();
+    });
+
+    // --- TOOLS (RECTANGLE / POLYGON / PICKER) ---
+    function setTool(toolName) {
+      if (toolName !== "picker") {
+        state.previousTool = toolName;
+      }
+      state.tool = toolName;
+      toolRectBtn.classList.toggle("active", toolName === "rect");
+      toolPolyBtn.classList.toggle("active", toolName === "polygon");
+      toolPickBtn.classList.toggle("active", toolName === "picker");
+
+      if (toolName !== "picker") {
+        magnifier.style.display = "none";
+      }
+
+      const m = getActiveMask();
+      if (m && (toolName === "rect" || toolName === "polygon") && m.shape !== toolName) {
+        m.shape = toolName;
+        if (toolName === "polygon" && m.points_pt.length === 0) {
+          m.closed = false;
+        }
+        syncInspectorFromActiveMask();
+        renderMaskList();
+      }
+      updatePolygonHint();
+      drawOverlay();
+    }
+
+    toolRectBtn.addEventListener("click", () => setTool("rect"));
+    toolPolyBtn.addEventListener("click", () => setTool("polygon"));
+    toolPickBtn.addEventListener("click", () => {
+      setTool(state.tool === "picker" ? state.previousTool : "picker");
+    });
+
+    function updatePolygonHint() {
+      const m = getActiveMask();
+      if (m && m.shape === "polygon" && !m.closed && state.sessionId) {
+        polygonHint.style.display = "inline-flex";
+        polygonHintText.textContent =
+          m.points_pt.length < 3
+            ? (currentLang === "en" ? `Click on the page to place vertices (${m.points_pt.length}/3 min).` : `Cliquez sur la page pour placer les sommets (${m.points_pt.length}/3 min).`)
+            : `${m.points_pt.length} ${I18N[currentLang].polyHintDone}`;
+        closePolyBtn.disabled = m.points_pt.length < 3;
+      } else {
+        polygonHint.style.display = "none";
+      }
+    }
+
+    function closeActivePolygon() {
+      const m = getActiveMask();
+      if (m && m.shape === "polygon" && m.points_pt.length >= 3) {
+        m.closed = true;
+        if (autoGrabCheck.checked) grabClosestOutboundPixel();
+        syncInspectorFromActiveMask();
+        drawOverlay();
+      }
+    }
+
+    closePolyBtn.addEventListener("click", closeActivePolygon);
+    finishPolyBtn.addEventListener("click", closeActivePolygon);
+    resetPolyBtn.addEventListener("click", () => {
+      const m = getActiveMask();
+      if (!m) return;
+      m.points_pt = [];
+      m.closed = false;
+      syncInspectorFromActiveMask();
+      drawOverlay();
+    });
+
+    // --- KEYBOARD SHORTCUTS ---
+    window.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "Enter") {
+        closeActivePolygon();
+      } else if (e.key === "Escape") {
+        if (shortcutsModal.style.display === "flex") {
+          shortcutsModal.style.display = "none";
+          return;
+        }
+        const m = getActiveMask();
+        if (m && m.shape === "polygon" && !m.closed) {
+          m.points_pt.pop();
+          syncInspectorFromActiveMask();
+          drawOverlay();
+        }
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (state.masks.length > 1 && state.activeMaskId) {
+          state.masks = state.masks.filter((x) => x.id !== state.activeMaskId);
+          state.activeMaskId = state.masks[0]?.id || null;
+          syncInspectorFromActiveMask();
+          renderMaskList();
+          drawOverlay();
+        }
+      } else if (e.key === "r" || e.key === "R") {
+        setTool("rect");
+      } else if (e.key === "p" || e.key === "P") {
+        setTool("polygon");
+      } else if (e.key === "i" || e.key === "I") {
+        setTool("picker");
+      } else if (e.key === "1") {
+        if (state.sessionId) loadPage(1);
+      } else if (e.key === "2") {
+        if (state.sessionId && state.pageCount >= 2) loadPage(2);
+      } else if (e.key === "[" || e.key === "ArrowLeft") {
+        if (state.currentPage > 1) loadPage(state.currentPage - 1);
+      } else if (e.key === "]" || e.key === "ArrowRight") {
+        if (state.currentPage < state.pageCount) loadPage(state.currentPage + 1);
+      } else if (e.key === "0") {
+        state.zoomMode = "fit";
+        applyCanvasZoom();
+      } else if (e.key === "+") {
+        state.zoomMode = "manual";
+        state.displayZoom = Math.min(2.5, state.displayZoom * 1.2);
+        applyCanvasZoom();
+      } else if (e.key === "-") {
+        state.zoomMode = "manual";
+        state.displayZoom = Math.max(0.2, state.displayZoom / 1.2);
+        applyCanvasZoom();
+      } else if (e.key === "?") {
+        shortcutsModal.style.display = shortcutsModal.style.display === "flex" ? "none" : "flex";
+      }
+    });
+
+    // --- OVERLAY DRAWING ---
+    function drawOverlay() {
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      if (!state.sessionId) return;
+
+      if (state.serverPreviewActive) return;
+
+      for (const m of state.masks) {
+        if (!maskAppliesToPage(m, state.currentPage)) continue;
+        const isActive = m.id === state.activeMaskId;
+
+        if (m.shape === "rect") {
+          drawRectMask(m, isActive);
+        } else if (m.shape === "polygon") {
+          drawPolygonMask(m, isActive);
+        }
+      }
+    }
+
+    function drawRectMask(m, isActive) {
+      const x = ptToPx(m.x_pt);
+      const y = ptToPx(m.y_pt);
+      const w = ptToPx(m.w_pt);
+      const h = ptToPx(m.h_pt);
+
+      overlayCtx.save();
+      overlayCtx.fillStyle = m.fill_color;
+      overlayCtx.globalAlpha = isActive ? 0.85 : 0.65;
+      overlayCtx.fillRect(x, y, w, h);
+
+      overlayCtx.globalAlpha = 1;
+      overlayCtx.strokeStyle = isActive ? "#38bdf8" : "rgba(128,128,128,0.5)";
+      overlayCtx.lineWidth = isActive ? 2 : 1;
+      overlayCtx.strokeRect(x, y, w, h);
+
+      if (isActive) {
+        const handles = getRectHandlesPx(m);
+        overlayCtx.fillStyle = "#ffffff";
+        overlayCtx.strokeStyle = "#38bdf8";
+        overlayCtx.lineWidth = 2;
+        for (const pt of Object.values(handles)) {
+          overlayCtx.beginPath();
+          overlayCtx.arc(pt.x, pt.y, HANDLE_RADIUS, 0, Math.PI * 2);
+          overlayCtx.fill();
+          overlayCtx.stroke();
+        }
+      }
+      overlayCtx.restore();
+    }
+
+    function drawPolygonMask(m, isActive) {
+      const pts = m.points_pt.map((p) => ({ x: ptToPx(p.x), y: ptToPx(p.y) }));
+      if (pts.length === 0) return;
+
+      overlayCtx.save();
+      overlayCtx.beginPath();
+      overlayCtx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        overlayCtx.lineTo(pts[i].x, pts[i].y);
+      }
+
+      if (m.closed) {
+        overlayCtx.closePath();
+        overlayCtx.fillStyle = m.fill_color;
+        overlayCtx.globalAlpha = isActive ? 0.85 : 0.65;
+        overlayCtx.fill();
+      } else if (isActive && state.hoverCursorPosPx) {
+        overlayCtx.lineTo(state.hoverCursorPosPx.x, state.hoverCursorPosPx.y);
+      }
+
+      overlayCtx.globalAlpha = 1;
+      overlayCtx.strokeStyle = isActive ? "#38bdf8" : "rgba(128,128,128,0.5)";
+      overlayCtx.lineWidth = 2;
+      overlayCtx.stroke();
+
+      if (isActive) {
+        pts.forEach((pt, idx) => {
+          overlayCtx.beginPath();
+          overlayCtx.arc(pt.x, pt.y, idx === 0 && !m.closed ? HANDLE_RADIUS + 2 : HANDLE_RADIUS, 0, Math.PI * 2);
+          overlayCtx.fillStyle = idx === 0 && !m.closed ? "#38bdf8" : "#ffffff";
+          overlayCtx.strokeStyle = "#38bdf8";
+          overlayCtx.lineWidth = 2;
+          overlayCtx.fill();
+          overlayCtx.stroke();
+        });
+      }
+      overlayCtx.restore();
+    }
+
+    function getRectHandlesPx(m) {
+      const x = ptToPx(m.x_pt);
+      const y = ptToPx(m.y_pt);
+      const w = ptToPx(m.w_pt);
+      const h = ptToPx(m.h_pt);
+      return {
+        nw: { x, y },
+        n: { x: x + w / 2, y },
+        ne: { x: x + w, y },
+        e: { x: x + w, y: y + h / 2 },
+        se: { x: x + w, y: y + h },
+        s: { x: x + w / 2, y: y + h },
+        sw: { x, y: y + h },
+        w: { x, y: y + h / 2 },
+      };
+    }
+
+    function pointInPolygon(px, py, ptsPx) {
+      let inside = false;
+      for (let i = 0, j = ptsPx.length - 1; i < ptsPx.length; j = i++) {
+        const xi = ptsPx[i].x, yi = ptsPx[i].y;
+        const xj = ptsPx[j].x, yj = ptsPx[j].y;
+        const intersect = yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function getMouseCanvasPx(evt) {
+      const r = overlayCanvas.getBoundingClientRect();
+      const sx = overlayCanvas.width / r.width;
+      const sy = overlayCanvas.height / r.height;
+      return {
+        x: Math.max(0, Math.min(overlayCanvas.width, (evt.clientX - r.left) * sx)),
+        y: Math.max(0, Math.min(overlayCanvas.height, (evt.clientY - r.top) * sy)),
+      };
+    }
+
+    // --- MOUSE CANVAS INTERACTIONS ---
+    overlayCanvas.addEventListener("mousedown", (evt) => {
+      if (!state.sessionId) return;
+      const pos = getMouseCanvasPx(evt);
+
+      if (state.serverPreviewActive && state.basePageImage) {
+        state.serverPreviewActive = false;
+        previewToggleBtn.classList.remove("active");
+        statusNote.style.display = "none";
+        pdfCtx.drawImage(state.basePageImage, 0, 0);
+      }
+
+      if (state.tool === "picker") {
+        const hex = samplePixelHex(Math.round(pos.x), Math.round(pos.y));
+        applyColorToActiveMask(hex);
+        setTool(state.previousTool);
+        return;
+      }
+
+      const m = getActiveMask();
+      if (!m) return;
+
+      if (m.shape === "polygon") {
+        const ptsPx = m.points_pt.map((p) => ({ x: ptToPx(p.x), y: ptToPx(p.y) }));
+
+        for (let i = 0; i < ptsPx.length; i++) {
+          const dist = Math.hypot(pos.x - ptsPx[i].x, pos.y - ptsPx[i].y);
+          if (dist <= 10) {
+            if (!m.closed && i === 0 && ptsPx.length >= 3) {
+              closeActivePolygon();
+              return;
+            }
+            if (m.closed) {
+              state.interaction = { type: "move-vertex", vertexIndex: i };
+              return;
+            }
+          }
+        }
+
+        if (m.closed && pointInPolygon(pos.x, pos.y, ptsPx)) {
+          state.interaction = {
+            type: "move-poly",
+            startPx: pos,
+            origPointsPt: m.points_pt.map((p) => ({ ...p })),
+          };
+          return;
+        }
+
+        if (m.closed) {
+          m.points_pt = [{ x: pxToPt(pos.x), y: pxToPt(pos.y) }];
+          m.closed = false;
+        } else {
+          m.points_pt.push({ x: pxToPt(pos.x), y: pxToPt(pos.y) });
+        }
+        syncInspectorFromActiveMask();
+        drawOverlay();
+        return;
+      }
+
+      const handles = getRectHandlesPx(m);
+      for (const [dir, hPos] of Object.entries(handles)) {
+        if (Math.hypot(pos.x - hPos.x, pos.y - hPos.y) <= 9) {
+          state.interaction = {
+            type: "resize-rect",
+            dir,
+            startPx: pos,
+            origRect: { x: m.x_pt, y: m.y_pt, w: m.w_pt, h: m.h_pt },
+          };
+          return;
+        }
+      }
+
+      const rx = ptToPx(m.x_pt), ry = ptToPx(m.y_pt), rw = ptToPx(m.w_pt), rh = ptToPx(m.h_pt);
+      if (pos.x >= rx && pos.x <= rx + rw && pos.y >= ry && pos.y <= ry + rh) {
+        state.interaction = {
+          type: "move-rect",
+          startPx: pos,
+          origRect: { x: m.x_pt, y: m.y_pt, w: m.w_pt, h: m.h_pt },
+        };
+      } else {
+        state.interaction = {
+          type: "draw-rect",
+          startPx: pos,
+        };
+        m.x_pt = pxToPt(pos.x);
+        m.y_pt = pxToPt(pos.y);
+        m.w_pt = 1;
+        m.h_pt = 1;
+      }
+      syncInspectorFromActiveMask();
+      drawOverlay();
+    });
+
+    overlayCanvas.addEventListener("dblclick", () => {
+      const m = getActiveMask();
+      if (m && m.shape === "polygon" && !m.closed && m.points_pt.length >= 3) {
+        closeActivePolygon();
+      }
+    });
+
+    window.addEventListener("mousemove", (evt) => {
+      if (!state.sessionId) return;
+      const r = overlayCanvas.getBoundingClientRect();
+      const inside =
+        evt.clientX >= r.left && evt.clientX <= r.right && evt.clientY >= r.top && evt.clientY <= r.bottom;
+      const pos = getMouseCanvasPx(evt);
+      state.hoverCursorPosPx = inside ? pos : null;
+
+      if (state.tool === "picker" && inside) {
+        const hex = samplePixelHex(Math.round(pos.x), Math.round(pos.y));
+        magnifier.style.display = "inline-flex";
+        magnifier.style.left = `${evt.clientX + 14}px`;
+        magnifier.style.top = `${evt.clientY + 14}px`;
+        magSwatch.style.background = hex;
+        magHex.textContent = hex;
+      } else {
+        magnifier.style.display = "none";
+      }
+
+      const m = getActiveMask();
+      if (!m) return;
+
+      if (!state.interaction) {
+        if (m.shape === "polygon" && !m.closed && inside) {
+          drawOverlay();
+        }
+        return;
+      }
+
+      const act = state.interaction;
+      if (act.type === "draw-rect") {
+        const x0 = Math.min(act.startPx.x, pos.x);
+        const y0 = Math.min(act.startPx.y, pos.y);
+        const w = Math.max(2, Math.abs(pos.x - act.startPx.x));
+        const h = Math.max(2, Math.abs(pos.y - act.startPx.y));
+        m.x_pt = pxToPt(x0);
+        m.y_pt = pxToPt(y0);
+        m.w_pt = pxToPt(w);
+        m.h_pt = pxToPt(h);
+      } else if (act.type === "move-rect") {
+        const dx = pxToPt(pos.x - act.startPx.x);
+        const dy = pxToPt(pos.y - act.startPx.y);
+        m.x_pt = Math.max(0, Math.min(state.pageWidthPt - act.origRect.w, act.origRect.x + dx));
+        m.y_pt = Math.max(0, Math.min(state.pageHeightPt - act.origRect.h, act.origRect.y + dy));
+      } else if (act.type === "resize-rect") {
+        const dx = pxToPt(pos.x - act.startPx.x);
+        const dy = pxToPt(pos.y - act.startPx.y);
+        const o = act.origRect;
+        let nx = o.x, ny = o.y, nw = o.w, nh = o.h;
+        if (act.dir.includes("e")) nw = Math.max(2, o.w + dx);
+        if (act.dir.includes("s")) nh = Math.max(2, o.h + dy);
+        if (act.dir.includes("w")) {
+          const d = Math.min(o.w - 2, dx);
+          nx = o.x + d;
+          nw = o.w - d;
+        }
+        if (act.dir.includes("n")) {
+          const d = Math.min(o.h - 2, dy);
+          ny = o.y + d;
+          nh = o.h - d;
+        }
+        m.x_pt = Math.max(0, nx);
+        m.y_pt = Math.max(0, ny);
+        m.w_pt = Math.min(state.pageWidthPt - m.x_pt, nw);
+        m.h_pt = Math.min(state.pageHeightPt - m.y_pt, nh);
+      } else if (act.type === "move-vertex") {
+        m.points_pt[act.vertexIndex] = {
+          x: Math.max(0, Math.min(state.pageWidthPt, pxToPt(pos.x))),
+          y: Math.max(0, Math.min(state.pageHeightPt, pxToPt(pos.y))),
+        };
+      } else if (act.type === "move-poly") {
+        const dx = pxToPt(pos.x - act.startPx.x);
+        const dy = pxToPt(pos.y - act.startPx.y);
+        m.points_pt = act.origPointsPt.map((p) => ({
+          x: Math.max(0, Math.min(state.pageWidthPt, p.x + dx)),
+          y: Math.max(0, Math.min(state.pageHeightPt, p.y + dy)),
+        }));
+      }
+
+      if (autoGrabCheck.checked) {
+        grabClosestOutboundPixel();
+      }
+      syncInspectorFromActiveMask();
+      drawOverlay();
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (state.interaction) {
+        state.interaction = null;
+        if (autoGrabCheck.checked) {
+          grabClosestOutboundPixel();
+        }
+      }
+    });
+
+    // --- NUMERIC FIELDS & UNITS ---
+    [inputX, inputY, inputW, inputH].forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const m = getActiveMask();
+        if (!m || m.shape !== "rect") return;
+        const vx = parseFloat(inputX.value) || 0;
+        const vy = parseFloat(inputY.value) || 0;
+        const vw = Math.max(1, parseFloat(inputW.value) || 1);
+        const vh = Math.max(1, parseFloat(inputH.value) || 1);
+        if (state.unit === "pt") {
+          m.x_pt = vx;
+          m.y_pt = vy;
+          m.w_pt = vw;
+          m.h_pt = vh;
+        } else {
+          m.x_pt = pxToPt(vx);
+          m.y_pt = pxToPt(vy);
+          m.w_pt = pxToPt(vw);
+          m.h_pt = pxToPt(vh);
+        }
+        if (autoGrabCheck.checked) grabClosestOutboundPixel();
+        drawOverlay();
+      });
+    });
+
+    unitPtBtn.addEventListener("click", () => {
+      state.unit = "pt";
+      unitPtBtn.classList.add("active");
+      unitPxBtn.classList.remove("active");
+      document.querySelectorAll(".u-lbl").forEach((el) => (el.textContent = "pt"));
+      syncInspectorFromActiveMask();
+    });
+
+    unitPxBtn.addEventListener("click", () => {
+      state.unit = "px";
+      unitPxBtn.classList.add("active");
+      unitPtBtn.classList.remove("active");
+      document.querySelectorAll(".u-lbl").forEach((el) => (el.textContent = "px"));
+      syncInspectorFromActiveMask();
+    });
+
+    // --- COLORS & OUTBOUND EDGE COLOR GRAB ---
+    function rgbToHex(r, g, b) {
+      return (
+        "#" +
+        [r, g, b]
+          .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0"))
+          .join("")
+          .toUpperCase()
+      );
+    }
+
+    function samplePixelHex(x, y) {
+      const cx = Math.max(0, Math.min(pdfCanvas.width - 1, x));
+      const cy = Math.max(0, Math.min(pdfCanvas.height - 1, y));
+      const d = pdfCtx.getImageData(cx, cy, 1, 1).data;
+      return rgbToHex(d[0], d[1], d[2]);
+    }
+
+    function applyColorToActiveMask(hex) {
+      const m = getActiveMask();
+      if (!m) return;
+      const cleaned = hex.trim().toUpperCase();
+      if (!/^#[0-9A-F]{6}$/.test(cleaned)) return;
+      m.fill_color = cleaned;
+      colorPicker.value = cleaned.toLowerCase();
+      colorHex.value = cleaned;
+      renderMaskList();
+      drawOverlay();
+    }
+
+    colorPicker.addEventListener("input", (e) => applyColorToActiveMask(e.target.value));
+    colorHex.addEventListener("change", (e) => {
+      let val = e.target.value.trim();
+      if (!val.startsWith("#")) val = "#" + val;
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) applyColorToActiveMask(val);
+    });
+    document.querySelectorAll(".swatch-dot").forEach((dot) => {
+      dot.addEventListener("click", () => applyColorToActiveMask(dot.dataset.color));
+    });
+
+    function grabClosestOutboundPixel() {
+      const m = getActiveMask();
+      if (!m || !pdfCanvas.width) return;
+
+      const W = pdfCanvas.width;
+      const H = pdfCanvas.height;
+      const samplesR = [], samplesG = [], samplesB = [];
+
+      function addSample(sx, sy) {
+        const cx = Math.round(sx);
+        const cy = Math.round(sy);
+        if (cx >= 0 && cx < W && cy >= 0 && cy < H) {
+          const d = pdfCtx.getImageData(cx, cy, 1, 1).data;
+          samplesR.push(d[0]);
+          samplesG.push(d[1]);
+          samplesB.push(d[2]);
+        }
+      }
+
+      if (m.shape === "rect") {
+        const rx = ptToPx(m.x_pt), ry = ptToPx(m.y_pt), rw = ptToPx(m.w_pt), rh = ptToPx(m.h_pt);
+        const side = outboundSide.value;
+        const off = 3;
+        const steps = 36;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          if (side === "bottom" || side === "all") addSample(rx + rw * t, ry + rh + off);
+          if (side === "top" || side === "all") addSample(rx + rw * t, ry - off);
+          if (side === "left" || side === "all") addSample(rx - off, ry + rh * t);
+          if (side === "right" || side === "all") addSample(rx + rw + off, ry + rh * t);
+        }
+      } else if (m.shape === "polygon" && m.points_pt.length >= 3) {
+        const pts = m.points_pt.map((p) => ({ x: ptToPx(p.x), y: ptToPx(p.y) }));
+        const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+        const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i], b = pts[(i + 1) % pts.length];
+          for (let s = 0; s <= 10; s++) {
+            const t = s / 10;
+            const mx = a.x + (b.x - a.x) * t;
+            const my = a.y + (b.y - a.y) * t;
+            const vx = mx - cx, vy = my - cy;
+            const len = Math.hypot(vx, vy) || 1;
+            addSample(mx + (vx / len) * 4, my + (vy / len) * 4);
+          }
+        }
+      }
+
+      if (samplesR.length === 0) return;
+      const median = (arr) => {
+        const s = [...arr].sort((a, b) => a - b);
+        return s[Math.floor(s.length / 2)];
+      };
+      applyColorToActiveMask(rgbToHex(median(samplesR), median(samplesG), median(samplesB)));
+    }
+
+    grabOutboundBtn.addEventListener("click", grabClosestOutboundPixel);
+    outboundSide.addEventListener("change", grabClosestOutboundPixel);
+
+    // --- REAL PYMUPDF PREVIEW ON CURRENT PAGE ---
+    previewToggleBtn.addEventListener("click", async () => {
+      if (!state.sessionId) return;
+
+      if (state.serverPreviewActive && state.basePageImage) {
+        state.serverPreviewActive = false;
+        previewToggleBtn.classList.remove("active");
+        pdfCtx.drawImage(state.basePageImage, 0, 0);
+        statusNote.style.display = "none";
+        drawOverlay();
+        return;
+      }
+
+      previewToggleBtn.disabled = true;
+      try {
+        const res = await fetch("/api/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            page_num: state.currentPage,
+            scale: state.renderScale,
+            masks: state.masks,
+          }),
+        });
+        if (!res.ok) throw new Error(I18N[currentLang].errorPreview);
+
+        const removed = res.headers.get("X-Removed-Chars") || "0";
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        await new Promise((r, j) => {
+          img.onload = r;
+          img.onerror = j;
+          img.src = url;
+        });
+
+        pdfCtx.drawImage(img, 0, 0);
+        state.serverPreviewActive = true;
+        previewToggleBtn.classList.add("active");
+        drawOverlay();
+
+        statusNote.style.display = "block";
+        statusNote.innerHTML = I18N[currentLang].previewSuccess
+          .replace("{page}", state.currentPage)
+          .replace("{count}", removed);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        previewToggleBtn.disabled = false;
+      }
+    });
+
+    // --- BATCH PROCESS & SSE STREAM ---
+    exportBtn.addEventListener("click", async () => {
+      if (!state.sessionId || state.masks.length === 0) return;
+
+      exportBtn.disabled = true;
+      downloadLink.style.display = "none";
+      statusNote.style.display = "none";
+      progressBox.style.display = "flex";
+      progressFill.style.width = "0%";
+      progressPct.textContent = "0%";
+      progressLabel.textContent = I18N[currentLang].progressLabel;
+
+      try {
+        const res = await fetch("/api/redact-stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            masks: state.masks,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || I18N[currentLang].errorBatch);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+
+          for (const evt of events) {
+            const line = evt.trim();
+            if (!line.startsWith("data:")) continue;
+            const msg = JSON.parse(line.replace(/^data:\s*/, ""));
+
+            if (msg.type === "progress") {
+              progressFill.style.width = `${msg.percent}%`;
+              progressPct.textContent = `${msg.percent}%`;
+              progressLabel.textContent = `Page ${msg.page_num} (${msg.current}/${msg.total})`;
+            } else if (msg.type === "optimizing") {
+              progressFill.style.width = "95%";
+              progressPct.textContent = "95%";
+              progressLabel.textContent = currentLang === "en" ? "Optimizing (garbage=4, deflate)…" : "Compression (garbage=4, deflate)…";
+            } else if (msg.type === "done") {
+              progressFill.style.width = "100%";
+              progressPct.textContent = "100%";
+              progressLabel.textContent = currentLang === "en" ? "Complete" : "Terminé";
+
+              statusNote.style.display = "block";
+              statusNote.innerHTML = I18N[currentLang].batchSuccess
+                .replace("{redacted}", msg.pages_redacted)
+                .replace("{total}", msg.total_pages)
+                .replace("{orig}", formatBytes(msg.original_size))
+                .replace("{out}", formatBytes(msg.output_size));
+
+              downloadLink.href = `/api/download/${msg.download_id}`;
+              downloadLink.download = msg.filename;
+              downloadLink.style.display = "inline-flex";
+            } else if (msg.type === "error") {
+              throw new Error(msg.message);
+            }
+          }
+        }
+      } catch (err) {
+        statusNote.style.display = "block";
+        statusNote.textContent = (currentLang === "en" ? "Error: " : "Erreur : ") + err.message;
+      } finally {
+        exportBtn.disabled = false;
+      }
+    });
+
+    // Initialize Language
+    setLanguage(currentLang);
+  </script>
+</body>
+</html>
